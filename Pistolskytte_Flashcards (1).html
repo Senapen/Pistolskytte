@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎯 Pistolskytte Flashcards</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: #f0f4f8; min-height: 100vh; }
+
+  .header { background: linear-gradient(135deg, #003366, #005599);
+             color: white; padding: 16px 20px; text-align: center; }
+  .header h1 { font-size: 1.4rem; margin-bottom: 4px; }
+  .header p { font-size: 0.85rem; opacity: 0.85; }
+
+  .controls { background: white; padding: 12px 16px; border-bottom: 1px solid #ddd;
+              display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+              justify-content: center; }
+
+  .filter-btn { padding: 6px 12px; border-radius: 20px; border: 2px solid #003366;
+                background: white; color: #003366; cursor: pointer; font-size: 0.8rem;
+                font-weight: 600; transition: all 0.2s; white-space: nowrap; }
+  .filter-btn.active { background: #003366; color: white; }
+  .filter-btn:hover { opacity: 0.8; }
+
+  .progress-bar { background: #e2e8f0; border-radius: 10px; height: 8px;
+                  margin: 12px 16px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #C8A400, #f0c000);
+                   border-radius: 10px; transition: width 0.4s ease; }
+
+  .stats { display: flex; justify-content: center; gap: 20px; padding: 8px 16px;
+           font-size: 0.8rem; color: #555; }
+  .stat { display: flex; align-items: center; gap: 4px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-green { background: #22c55e; }
+  .dot-red { background: #ef4444; }
+  .dot-grey { background: #94a3b8; }
+
+  .card-area { padding: 16px; display: flex; flex-direction: column;
+               align-items: center; min-height: 60vh; }
+
+  .counter { color: #666; font-size: 0.85rem; margin-bottom: 10px; }
+
+  .card-container { perspective: 1000px; width: 100%; max-width: 600px; }
+
+  .card { width: 100%; min-height: 220px; cursor: pointer; position: relative;
+          transform-style: preserve-3d; transition: transform 0.5s ease; }
+  .card.flipped { transform: rotateY(180deg); }
+
+  .card-face { position: absolute; width: 100%; min-height: 220px; border-radius: 16px;
+               padding: 24px; backface-visibility: hidden; display: flex;
+               flex-direction: column; justify-content: center; align-items: center;
+               text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+
+  .card-front { background: white; }
+  .card-back { background: linear-gradient(135deg, #003366, #004488);
+               color: white; transform: rotateY(180deg); }
+
+  .card-chapter { font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+                  letter-spacing: 1px; margin-bottom: 10px; padding: 3px 10px;
+                  border-radius: 10px; }
+  .card-front .card-chapter { background: #e8eef5; color: #003366; }
+  .card-back .card-chapter { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.9); }
+
+  .card-question { font-size: 1.05rem; font-weight: 600; color: #1a1a2e; line-height: 1.4; }
+  .card-back .card-answer { font-size: 0.95rem; line-height: 1.6; color: white; }
+  .card-hint { font-size: 0.75rem; color: #999; margin-top: 10px; }
+
+  .flip-indicator { position: absolute; bottom: 12px; right: 16px; font-size: 0.7rem;
+                    color: #aaa; display: flex; align-items: center; gap: 4px; }
+
+  .action-btns { display: flex; gap: 12px; margin-top: 20px; width: 100%; max-width: 600px; }
+  .btn { flex: 1; padding: 14px; border-radius: 12px; border: none; cursor: pointer;
+         font-size: 0.95rem; font-weight: 700; transition: all 0.2s; }
+  .btn-no { background: #fee2e2; color: #dc2626; }
+  .btn-no:hover { background: #fca5a5; }
+  .btn-yes { background: #dcfce7; color: #16a34a; }
+  .btn-yes:hover { background: #86efac; }
+  .btn:active { transform: scale(0.97); }
+
+  .nav-btns { display: flex; gap: 10px; margin-top: 12px; }
+  .nav-btn { padding: 8px 20px; border-radius: 8px; border: 2px solid #003366;
+             background: white; color: #003366; cursor: pointer; font-weight: 600;
+             font-size: 0.85rem; }
+  .nav-btn:hover { background: #003366; color: white; }
+
+  .done-screen { text-align: center; padding: 40px 20px; max-width: 500px; margin: 0 auto; }
+  .done-screen h2 { font-size: 1.8rem; color: #003366; margin-bottom: 12px; }
+  .done-score { font-size: 3rem; font-weight: 800; color: #C8A400; margin: 10px 0; }
+  .done-screen p { color: #555; margin-bottom: 20px; }
+  .restart-btn { background: #003366; color: white; border: none; padding: 14px 32px;
+                 border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; }
+  .restart-btn:hover { background: #004488; }
+
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.7rem;
+         font-weight: 600; margin: 2px; }
+  .tag-safety { background: #fee2e2; color: #dc2626; }
+  .tag-org { background: #e0f2fe; color: #0369a1; }
+  .tag-law { background: #fef3c7; color: #92400e; }
+  .tag-tech { background: #f0fdf4; color: #166534; }
+  .tag-comp { background: #faf5ff; color: #7c3aed; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🎯 Pistolskytte Flashcards</h1>
+  <p>Grundutbildning – Pistolskyttekortet</p>
+</div>
+
+<div class="controls" id="filterControls">
+  <button class="filter-btn active" onclick="filterCards('all')">Alla kort</button>
+  <button class="filter-btn" onclick="filterCards('wrong')">❌ Kan ej</button>
+  <button class="filter-btn" onclick="filterCards('Kap 1')">Kap 1</button>
+  <button class="filter-btn" onclick="filterCards('Kap 2')">Kap 2</button>
+  <button class="filter-btn" onclick="filterCards('Kap 3')">Kap 3</button>
+  <button class="filter-btn" onclick="filterCards('Kap 4')">Kap 4</button>
+  <button class="filter-btn" onclick="filterCards('Kap 5')">Kap 5</button>
+  <button class="filter-btn" onclick="filterCards('Kap 6')">Kap 6</button>
+  <button class="filter-btn" onclick="filterCards('Kap 7')">Kap 7</button>
+  <button class="filter-btn" onclick="filterCards('Kap 8')">Kap 8</button>
+  <button class="filter-btn" onclick="filterCards('Provfrågor')">📝 Provfrågor</button>
+  <button class="filter-btn" onclick="filterCards('Del B Säkerhet')">🔴 Del B Säkerhet</button>
+  <button class="filter-btn" onclick="shuffleCards()">🔀 Blanda</button>
+</div>
+
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+<div class="stats">
+  <div class="stat"><div class="dot dot-green"></div><span id="countYes">0 kan</span></div>
+  <div class="stat"><div class="dot dot-red"></div><span id="countNo">0 kan ej</span></div>
+  <div class="stat"><div class="dot dot-grey"></div><span id="countLeft">0 kvar</span></div>
+</div>
+
+<div class="card-area" id="cardArea">
+  <div class="counter" id="counter"></div>
+  <div class="card-container">
+    <div class="card" id="card" onclick="flipCard()">
+      <div class="card-face card-front" id="cardFront">
+        <span class="card-chapter" id="cardChapter"></span>
+        <p class="card-question" id="cardQuestion"></p>
+        <p class="card-hint">👆 Tryck för att se svaret</p>
+        <div class="flip-indicator">↻ vänd</div>
+      </div>
+      <div class="card-face card-back" id="cardBack">
+        <span class="card-chapter" id="cardChapterBack"></span>
+        <p class="card-answer" id="cardAnswer"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="action-btns" id="actionBtns" style="display:none;">
+    <button class="btn btn-no" onclick="markCard(false)">❌ Kan inte</button>
+    <button class="btn btn-yes" onclick="markCard(true)">✅ Kan!</button>
+  </div>
+  <div class="nav-btns">
+    <button class="nav-btn" onclick="prevCard()">◀ Föregående</button>
+    <button class="nav-btn" onclick="nextCard()">Nästa ▶</button>
+  </div>
+</div>
+
+<div class="done-screen" id="doneScreen" style="display:none;">
+  <h2>🎯 Omgång klar!</h2>
+  <div class="done-score" id="doneScore"></div>
+  <p id="doneMsg"></p>
+  <button class="restart-btn" onclick="restart()">🔄 Gör om</button>
+</div>
+
+<script>
+const allCards = [
+  // KAP 1
+  { chapter:"Kap 1", q:"Vad är SPSF och när bildades det?", a:"Svenska Pistolskytteförbundet – bildat 1936. Riksorganisation för pistolskytteföreningar i Sverige. Ca 29 500 medlemmar." },
+  { chapter:"Kap 1", q:"Vilka krav finns för att få pistolskyttekortet? (2 delar)", a:"1. Godkänt teoretiskt prov (20 frågor – 10 säkerhet + 10 skjutlära/utrustning)\n2. Bronsmärke i vapengrupp C (kal. .22): 3 precisionsserier à 5 skott, minst 34p/serie + 3 tillämpningsserier, minst 5 träff/serie." },
+  { chapter:"Kap 1", q:"Vem fick OS-guld i fripistol 1936 respektive 1972?", a:"1936 Berlin: Torsten Ullman\n1972 München: Ragnar Skanåker" },
+  { chapter:"Kap 1", q:"Vad är pistolskyttekortet?", a:"Bevis på att innehavaren har en god och enhetlig grundutbildning samt den teoretiska och praktiska kompetens som erfordras för att enskilt bedriva pistolskytte." },
+  { chapter:"Kap 1", q:"Vad innehåller det teoretiska provet för pistolskyttekortet?", a:"20 frågor totalt:\n• 10 frågor om säkerhet\n• 10 frågor om skjutlära och utrustning" },
+  { chapter:"Kap 1", q:"Kronologisk ordning: hjullås → flintlås → knallhatt → Colts revolver – vilka sekler?", a:"1500-talet: hjullåspistol\n1600-talet: flintlås\nTidigt 1800-tal: knallhatten\n1835: Colts revolver\nSent 1800-tal: automatiska pistoler (Bergmann & Browning)" },
+
+  // KAP 2
+  { chapter:"Kap 2", q:"De fyra grundstenarna i skyttevett?", a:"Säkerhet – Ärlighet – Hänsyn – Disciplin" },
+  { chapter:"Kap 2", q:"Vad menas med 'Ärlighet' i skyttevett?", a:"Följ alltid reglerna. En seger genom fusk kan knappast vara värd att vinna. Lär dig reglerna och ha tillgång till skjuthandboken." },
+  { chapter:"Kap 2", q:"Vad menas med 'Disciplin' i skyttevett?", a:"• Skytledare ska alltid finnas vid träning/tävling – skytledaren bestämmer när det är tillåtet att skjuta\n• Lär dig kommandoordsserierna\n• Visitation ska utföras efter skjutning" },
+  { chapter:"Kap 2", q:"Vilken är föreningens högsta beslutande organ?", a:"Årsmötet – alla medlemmar får delta och rösta. Man väljer också en styrelse för nästa år." },
+  { chapter:"Kap 2", q:"Vad är en förening stadgar?", a:"Föreningens spelregler. Anger vad föreningen ska syssla med, vilka rättigheter och skyldigheter medlemmarna har, hur föreningen ska organiseras och var beslut fattas." },
+  { chapter:"Kap 2", q:"Vad är SvSF och vad ansvarar de för?", a:"Svenska Skyttesportförbundet – bildat 2009. Bedriver sportskytte och nationellt gevärsskytte. Enda skytteorg. ansluten till ISSF och RF. Ansvarar för Sveriges deltagande i OS." },
+  { chapter:"Kap 2", q:"Vad är SISU Idrottsutbildarna?", a:"Idrottens studie- och utbildningsorganisation. Jobbar för att stimulera lärande, stärka engagemanget och utveckla idrottens verksamhet. Ledstjärna: 'Vi är där när idrotten lär'." },
+  { chapter:"Kap 2", q:"Vilka rättigheter har du som föreningsmedlem?", a:"• Rätt att delta i föreningens verksamhet\n• Rätt att få information om verksamheten (anslagstavla, hemsida, mail etc.)" },
+
+  // KAP 3 – SÄKERHET (tyngst på provet)
+  { chapter:"Kap 3", q:"Grundregel 1: Vad gäller för riktning av vapnet?", a:"Förbjudet att sikta mot personer eller i en riktning som kan innebära fara eller vålla skada. Gäller BÅDE laddade och oladdade vapen. Vapen förvaras i hölster/väska utom på skjutplatsen." },
+  { chapter:"Kap 3", q:"Grundregel 2: Hur ska man alltid behandla ett vapen?", a:"Utgå från att varje vapen är laddat. Kontrollera alltid att vapnet är oladdat innan du lämnar eller tar emot det, och före vapenvård." },
+  { chapter:"Kap 3", q:"Grundregel 3: Vad gäller mellan kommandona 'Patron ur' och 'Ladda'?", a:"Säkerhetsbricka/säkerhetspropp (krutvapen) ska alltid vara isatt i vapnet." },
+  { chapter:"Kap 3", q:"Grundregel 4: Vad gäller för mynningens riktning?", a:"Var vaksam på vilken riktning vapnets mynning pekar – hela tiden. Vapnet ska peka i säker riktning även vid maximal rekyl och vid eventuell justering." },
+  { chapter:"Kap 3", q:"Grundregel 5: Vad ska du alltid kontrollera innan du skjuter?", a:"Kontrollera alltid vad som finns bakom målet. Kullfånget ska ta upp rikoschetter." },
+  { chapter:"Kap 3", q:"Grundregel 6: Vad gäller för skytledare?", a:"Vid all skjutning ska en av de närvarande vara skytledare. Finns ingen utsedd skytledare ska skyttarna själva utse en. Är du ensam på banan ansvarar du själv för säkerheten." },
+  { chapter:"Kap 3", q:"Grundregel 7: Vad gäller alkohol och droger?", a:"Hantera aldrig vapen eller ammunition om du är påverkad av alkohol eller andra droger." },
+  { chapter:"Kap 3", q:"Grundregel 8: Vad gäller barn och vapen?", a:"Förhindra olycksfall med barn och vapen – se till att vapen och ammunition är inlåsta och oåtkomliga för minderåriga." },
+  { chapter:"Kap 3", q:"Grundregel 9: Hur ska vapen som inte är under din kontroll förvaras?", a:"Försäkra dig om att varje vapen som inte är under din direkta uppsikt och kontroll förvaras på ett säkert och lagenligt sätt." },
+  { chapter:"Kap 3", q:"Vad är vapengrupp C och varför är den viktig för nybörjare?", a:"Finkalibriga pistoler och revolvrar, ENDAST kaliber .22 long rifle. Används vid allt nybörjarskytte med krutvapen. Kolvbestämmelser som grupp B. Avtryck: lägst 1,0 kg." },
+  { chapter:"Kap 3", q:"Vilken kaliber och tändningstyp har C-vapnets ammunition?", a:"5,56 mm (.22 LR), kantantändning. Kulan är tillverkad av bly." },
+  { chapter:"Kap 3", q:"Hur kontrolleras vapnet vid vapenkontroll i tävling?", a:"Vapnet ska vara oladdat (tömt). Säkerhetspropp/bricka isatt. Slutstycket framfört / trumman insvängd. Magasinet lämnas separat." },
+  { chapter:"Kap 3", q:"Vad är avtrycket (minsta vikt) för en luftpistol?", a:"500 gram." },
+  { chapter:"Kap 3", q:"Vad är kaliber och ammunition för en luftpistol?", a:"Kaliber 4,5 mm (.177). Kulan ska vara tillverkad av bly eller annat mjukt material." },
+  { chapter:"Kap 3", q:"Vilken utrustning är absolut obligatorisk vid skytte?", a:"Hörselskydd – ABSOLUT obligatoriskt och viktigast. Ögonskydd bör alltid användas." },
+  { chapter:"Kap 3", q:"Vad är vapengrupp A?", a:"Grovkalibriga pistoler av tjänstevapentyp. Ska skjutas med mandlad ammunition med minst 420 joules mynningsenergi. Kolven får INTE ha tumhylla eller handstöd. Avtryck: min 1,36 kg. Kaliber .30–.45." },
+  { chapter:"Kap 3", q:"Vad skiljer vapengrupp B från A?", a:"Grupp B tillåter anatomisk utformning av kolven – dvs. tumhylla och handstöd. Kaliber .30–.45. Avtryck: min 1,0 kg." },
+
+  // KAP 4
+  { chapter:"Kap 4", q:"Vilka 7 krav gäller för vapenlicens?", a:"1. Giltigt skäl (behov)\n2. Myndig (18 år)\n3. Aktiv SPSF-medlem ≥6 månader (min 12 tillfällen)\n4. SPSF guldmärke eller SvSF silvermärke\n5. Pistolskyttekortet\n6. Skötsam medborgare\n7. Godkänt vapenskåp (SS 3492)" },
+  { chapter:"Kap 4", q:"Hur länge är en vapenlicens för flerskottspistol giltig?", a:"HÖGST 5 år – måste sedan förnyas via ny ansökan. Polisen kan ompröva licensen om du inte längre har behov (ej aktiv medlem)." },
+  { chapter:"Kap 4", q:"Vilket vapenskåp krävs för hemförvaring av skjutvapen?", a:"SS 3492 godkänt säkerhetsskåp. Kombinationslås rekommenderas." },
+  { chapter:"Kap 4", q:"Vad gäller för förvaring av vapen vid transport med bil?", a:"Vitala delar (slutstycke/mantel/pipa för pistol, mantel/pipa för revolver) ska förvaras åtskilda och väl gömda i bilen. Vapen och ammunition hålls under uppsikt." },
+  { chapter:"Kap 4", q:"Vad är skillnaden mellan självständig utlåning och uppsiktsutlåning?", a:"Självständig: låntagaren använder vapnet utan att ägaren är närvarnde – kräver att låntagaren har giltig licens.\nUppsiktsutlåning: ägaren (eller arrangör) är alltid närvarande. Org.kontrollerad: vid föreningens träning/tävling, ingen åldersgräns." },
+  { chapter:"Kap 4", q:"Vad ska en lånelicens innehålla?", a:"Vem ägaren är, vem låntagaren är, vapentyp, utlåningstid och antal gånger." },
+  { chapter:"Kap 4", q:"Vilka försäkringar har du som aktiv SPSF-skytt?", a:"Försäkring för Ansvar och Olycksfall. Gäller vid skytteverksamhet och resor till/från skjutbanan. SPSF har dessutom en olycksfallsförsäkring för planlagd verksamhet vid banan." },
+
+  // KAP 5
+  { chapter:"Kap 5", q:"Räkna upp de 7 momenten i skjutteknik i rätt ordning.", a:"1. Ställning\n2. Grepp\n3. Lyftet och armens hållning\n4. Andning\n5. Riktning\n6. Avfyring\n7. Uppföljning" },
+  { chapter:"Kap 5", q:"Hur ska ställningen se ut i precisionsskytte?", a:"Sidan mot tavlan ca 45°. Ben axelbrett, parallella eller lätt utåtvridna, lika viktfördelning. Huvud vrids ledigt mot tavlan. Korrigera med fötterna (ej armen). Ledig arm i byxfickan." },
+  { chapter:"Kap 5", q:"Hur ska greppet se ut?", a:"Kolven mot högra handens tumveck (pipan i linje med underarmen). Grepp så högt som möjligt. Tumme löst mot kolvsidan. Avtryckarfingret arbetar FRITT utan att röra kolven/stommen. Grepp fast men avspänt." },
+  { chapter:"Kap 5", q:"Hur ska andningen gå till under skjutning?", a:"Djup inandning vid lyftet → långsam utandning till hälften → håll andan under riktning och avfyring. Avbryt INTE andningspausen – håll andan tills uppföljningen är klar." },
+  { chapter:"Kap 5", q:"Vad är struket korn?", a:"Kornet mitt i siktskåran med överdelen i höjd med siktskårans överdel. Man fokuserar skärpan på kornet – tavelpricken upplevs som oskarp." },
+  { chapter:"Kap 5", q:"Hur länge bör finriktningen hålla på?", a:"Max 8 sekunder. Har man inte fått iväg skottet inom den tiden bör man börja om." },
+  { chapter:"Kap 5", q:"Hur ska avfyringen gå till?", a:"Lugn, stadig tryckökning mot avtryckaren. ENBART pekfingret rör sig. Fattningen i övrigt är oförändrad. Avfyring bör ske 3–8 sek efter att finriktningen påbörjats." },
+  { chapter:"Kap 5", q:"Vad är 'tryckpunkten' på ett vapen?", a:"Efter att ha fört avtryckaren bakåt en bit känner man att den tar stopp (tryckpunkten). Med avtryckaren i det läget sker skjutningen i finriktningen. Olika vapen kräver olika kraft för att avfyringen ska ske." },
+  { chapter:"Kap 5", q:"Vad är uppföljning och varför är det viktigt?", a:"Att hålla vapnet stilla och läsa av siktbilden omedelbart efter avfyringen. Fel uppstår oftast i avfyringsögonblicket. Man ska gissa var skottet sitter INNAN man kontrollerar i kikaren – var ärlig mot dig själv!" },
+  { chapter:"Kap 5", q:"Hur skiljer sig ställningen vid skjutning med stödhand?", a:"Fötterna parallella, bröstkorgen RAKT mot tavlan. Armarna bildar ett V med pistolen i spetsen. Axelpartiet avspänt." },
+  { chapter:"Kap 5", q:"Vad gäller för vänsterhanden (stödhanden)?", a:"Den är ett stöd och INGET MERA. Får inte vara med och påverka riktning eller avfyring. Höjdjusteringar görs INTE med tippning i handleden." },
+  { chapter:"Kap 5", q:"Hur nollställs vapnet i fältskytte?", a:"Vapnet nollställs till mitt i målet vid 25 m skjutavstånd. Behöver man då inte ta hänsyn till kulbanans krökning på avstånd upp till ca 50 m." },
+
+  // KAP 6
+  { chapter:"Kap 6", q:"Vad händer om man inte följer kommandona vid tävling?", a:"Risk för diskvalifikation – man måste lämna tävlingen och banan." },
+  { chapter:"Kap 6", q:"Hur ska vapnet bäras på skjutbanan?", a:"I hölster eller väska – UTOM vid skjutplatsen och vid vapenkontroll, sotning, justering och byte av växelsats." },
+  { chapter:"Kap 6", q:"Vad gör du vid vapenfel under tävling?", a:"Sätt upp handen i luften – gör INGENTING utan skytledarens tillstånd. Påkalla skytledarens uppmärksamhet." },
+  { chapter:"Kap 6", q:"Vad gäller vid tolkning av kantskott?", a:"Om tolken vidrör linjen räknas träffen till det HÖGRE värdet." },
+  { chapter:"Kap 6", q:"Vad gäller för tavlan innan markering?", a:"Tavlan får INTE vidröras eller kritas innan antalet skott kontrollerats och poäng lästs upp." },
+  { chapter:"Kap 6", q:"Varför ska man tvätta händerna efter skjutning?", a:"Ammunition innehåller en del beståndsdelar (t.ex. bly) som inte bör förtäras." },
+  { chapter:"Kap 6", q:"Vad är viktigt att kontrollera INNAN vapenvård?", a:"Att vapnet alltid är oladdat (tömt) innan vård påbörjas." },
+
+  // KAP 7
+  { chapter:"Kap 7", q:"Precisionsskjutning – avstånd, tavla och tid?", a:"25 m. 10-ringad internationell tavla 60×60 cm, tia=5 cm. 5 skotts-serier. Tid: 5 min/serie. Ingen stödhand (utom för skyttar 70+ år i klass A, B eller Veteran Äldre)." },
+  { chapter:"Kap 7", q:"Snabbskjutning – utgångsställning och hur fungerar det?", a:"Avstånd 25 m. Utgångsläge 45°. Tavlan vänds fram → 3 sek att lyfta och avfyra → arm sänks till 45° → vänta 7 sek på nästa visning. 5 skott, upprepas 5 ggr/serie. Tavla: 5-ringad 60×60 cm, tia=10 cm." },
+  { chapter:"Kap 7", q:"Vad är fältskjutning?", a:"Unikt för Sverige, Danmark och Norge. Omväxlande skjutning på korta tider mot fasta/rörliga mål stationsvis i terrängen. Patruljer 4–10 skyttar. 6 skott/station. Skjuttid 6–15 sek. Stödhand ofta tillåten." },
+  { chapter:"Kap 7", q:"Luftpistolskytte – avstånd, skott och total tid?", a:"10 m. 60 tävlingsskott totalt. Total tid: 1 timme och 45 minuter (1 tim + 30 min på elektroniska tavlor). Tavla: 10-ringad 17×17 cm (hel) eller 14×14 cm (från ring 3). Tia: 11,5 mm." },
+  { chapter:"Kap 7", q:"Vad är klassindelning klass 1 i SPSF?", a:"Nybörjarskyttar som ännu inte erövrat något märke eller uppfyllt fordringarna för brons- eller silvermärket." },
+  { chapter:"Kap 7", q:"Vad krävs för klass 3 (riksmästarklassen)?", a:"3 erövrade standardmedaljpoäng i precisions- respektive fältskjutning, alternativt placering i bästa tredjedelen i öppen klass vid SM föregående år." },
+  { chapter:"Kap 7", q:"Till vilken ålder räknas man som junior i SPSF?", a:"T.o.m. det år man fyller 20 år. Som junior har man rätt att tävla i juniorklassen även om man meriterat sig för klass 2 eller 3." },
+  { chapter:"Kap 7", q:"Vad är PPC och var kommer det ifrån?", a:"Precision Pistol Competition – internationell gren med ursprung från polisen i USA. Genomförs på 5 avstånd: 3, 7, 15, 25 och 50 yards. Korta skjuttider, varierade ställningar. Tavla: 113×65 cm, 5 ringar." },
+  { chapter:"Kap 7", q:"Vad gäller för att tävla i SvSF-tävlingar utanför egen förening?", a:"Du måste ha SvSF tävlingslicens." },
+
+  // PROVFRÅGOR (loggaskott.se)
+  { chapter:"Provfrågor", q:"Vilka är de fyra grundreglerna för säker vapenhantering?", a:"1. Behandla alltid vapnet som om det vore laddat.\n2. Rikta aldrig vapnet mot något du inte avser att skjuta på.\n3. Håll fingret utanför avtryckarens vaktbygel tills du är redo att skjuta.\n4. Var säker på ditt mål och vad som finns bakom det." },
+  { chapter:"Provfrågor", q:"Vad innebär det att ett vapen är 'klart'?", a:"Magasinet är borttaget (eller cylindern öppen för revolver), slutstycket i bakre läge och pipan synligt tom. Vapnet ska alltid visas klart för skjutledaren efter avslutad skjutning." },
+  { chapter:"Provfrågor", q:"I vilken riktning ska mynningen peka när du inte skjuter?", a:"Mot kullfånget (nedåt i banan) eller rakt uppåt. ALDRIG mot en annan person eller åt sidan." },
+  { chapter:"Provfrågor", q:"Vad gör du om du får en klick (patronen avfyras inte)?", a:"Håll vapnet riktat mot kullfånget i minst 30 sekunder – orsaken kan vara en fördröjd antändning (eftertändare). Avladda sedan vapnet säkert och meddela skjutledaren." },
+  { chapter:"Provfrågor", q:"Vad krävs för att få inneha ett skjutvapen i Sverige?", a:"En vapenlicens utfärdad av Polismyndigheten. För sportskyttar krävs bl.a. medlemskap i godkänd skytteklubb, uppnått guldmärke och minst 6 månaders dokumenterad aktivitet (minst 12 tillfällen)." },
+  { chapter:"Provfrågor", q:"Hur ska vapen förvaras hemma?", a:"I ett godkänt vapenskåp (SS 3492 eller motsvarande). Skåp under 150 kg ska vara förankrat i vägg eller golv. Ammunition får förvaras i samma skåp men i separat fack." },
+  { chapter:"Provfrågor", q:"Hur ska ett vapen transporteras till och från skjutbanan?", a:"Vapnet ska vara oladdat och förvaras i ett låst fodral eller väska. Transporten ska ske utan onödiga uppehåll. Ha alltid med dig licensbeviset." },
+  { chapter:"Provfrågor", q:"Vem bestämmer på skjutbanan?", a:"Skjutledaren har det yttersta ansvaret för säkerheten. Du ska alltid följa skjutledarens instruktioner. Skjutledaren avgör när det är säkert att skjuta, byta tavla eller gå fram." },
+  { chapter:"Provfrågor", q:"När får du ladda ditt vapen på banan?", a:"Först när skjutledaren har gett kommandot 'Ladda' eller motsvarande. Aldrig på eget initiativ. Ladda alltid med mynningen riktad mot kullfånget." },
+  { chapter:"Provfrågor", q:"Vad gör du när kommandot 'Eld upphör' ges?", a:"Sluta skjut omedelbart. Säkra vapnet (finger utanför vaktbygeln), avladda och visa vapnet klart för skjutledaren. Lägg INTE ner vapnet förrän det har visats klart." },
+  { chapter:"Provfrågor", q:"Får du gå fram till tavlan medan andra skjuter?", a:"NEJ, absolut inte. Du får bara gå fram när skjutledaren gett klartecken och samtliga skyttar har visat klart. Att gå framför skjutlinjen medan skytte pågår är livsfarligt." },
+  { chapter:"Provfrågor", q:"Vilka delar består en patron av?", a:"Fyra delar:\n1. Hylsa\n2. Krut (drivmedel)\n3. Tändhatt (tändsats)\n4. Kula (projektil)\nNär tändhatten slås av antänds krutet och driver ut kulan genom pipan." },
+  { chapter:"Provfrågor", q:"Varför är det viktigt att använda rätt kaliber?", a:"Fel kaliber kan orsaka allvarliga olyckor. En patron med fel kaliber kan fastna i patronläget, orsaka trycksprängning eller skada vapnet och skytten. Kontrollera alltid att ammunitionen matchar vapnets kaliberstämpling." },
+  { chapter:"Provfrågor", q:"Vad är skillnaden mellan centralantändning och kantantändning?", a:"Kantantändning (t.ex. .22 LR): tändsatsen är inbyggd i hylsans kant.\nCentralantändning (t.ex. 9 mm): separat tändhatt i hylsans botten.\nDe flesta tävlingskalibrar utöver .22 LR är centralantändning." },
+  { chapter:"Provfrågor", q:"Vad heter pistolskyttarnas riksförbund och vad är dess uppgift?", a:"Svenska Pistolskytteförbundet (SPSF). Organiserar pistolskytte i Sverige, ansvarar för tävlingsregler, utbildningsmaterial och utfärdar pistolskyttekortet genom sina medlemsklubbar." },
+  { chapter:"Provfrågor", q:"Vilka skyttegrenar kan man tävla i med pistol?", a:"Precision, fält, snabbskjutning, militär snabbmatch, nationell helmatch, PPC, magnumfält, luftpistol, falling target, IPSC (dynamiskt skytte) och silhuett. Varje gren har egna regler och poängkrav." },
+
+  // KAP 8
+  { chapter:"Kap 8", q:"Vad är de viktigaste träningsprinciperna?", a:"Regelbundenhet (minst 1 ggr/vecka), Vila & återhämtning (7–8 tim sömn), Koncentration, Variation, Stigande belastning. Bestäm inför varje pass vilket MOMENT du tränar." },
+  { chapter:"Kap 8", q:"De tre stegen i mental träning?", a:"1. Medvetandegör – bli medveten om beteendet\n2. Acceptera – acceptera att du har det beteendet\n3. Förändra – träna aktivt på att ändra beteendet" },
+  { chapter:"Kap 8", q:"De tre viktigaste områdena för mental träning?", a:"Avslappning – Koncentration – Målbild" },
+  { chapter:"Kap 8", q:"Vad är dopning och vad gäller för SPSF-skyttar?", a:"Bedrägligt/vilseledande användande av substans som kan förbättra prestationer, är farlig för hälsan eller strider mot fair play. Aktiva inom SvSF är underkastade Riksidrottsförbundets dopingregler." },
+  { chapter:"Kap 8", q:"Varför bör man undvika koffein inför tävling?", a:"Koffein påverkar negativt förmågan att hålla vapnet stilla. Det kan dessutom ge kortsiktiga negativa konsekvenser för prestationen om man tillfälligt förändrar intaget just inför tävling (abstinens)." },
+  { chapter:"Kap 8", q:"Vilka tre nivåer finns i SPSF:s instruktörsorganisation?", a:"1. Riksinstruktörer (nationell nivå, utbildar kretsinstruktörer)\n2. Kretsinstruktörer (utbildar föreningsinstruktörer)\n3. Föreningsinstruktörer (utbildar medlemmar, genomför prov för kortet)" },
+  { chapter:"Kap 8", q:"Vad innebär överenskommelsen SPSF–SvSF om pistolskyttekortet?", a:"SvSF accepterar genomgången grundutbildning för Pistolskyttekortet som kvalificerande för Skyttekortet – Pistol. Skytt som vill ha båda korten skickar kopia av Pistolskyttekortet till SvSF:s kansli." },
+  // DEL B SÄKERHET (Skjuthandboken)
+  { chapter:"Del B Säkerhet", q:"Vad är grundregel 1 – riktningsregeln?", a:"FÖRBJUDET att sikta mot personer eller i annan riktning som kan innebära fara eller vålla skada. Gäller BÅDE laddade och oladdade vapen – även proppade vapen. Vapen utan propp (t.ex. när laddat) ska ALLTID hanteras i säker riktning." },
+  { chapter:"Del B Säkerhet", q:"Grundregel 2: Hur ska du behandla varje vapen?", a:"Utgå från att varje vapen är laddat tills du förvissat dig om motsatsen. Kontrollera alltid att vapnet är oladdat: efter skjutning, innan du lämnar/tar emot vapen, och före vapenvård. Kontrollen görs genom att förvissar sig om att vapnet är proppat." },
+  { chapter:"Del B Säkerhet", q:"Grundregel 3: Vad gäller mellan 'PATRON UR' och 'LADDA'?", a:"Vapnet ska ALLTID vara försett med isatt säkerhetspropp/bricka under hela mellantiden." },
+  { chapter:"Del B Säkerhet", q:"Grundregel 4: Mynningens riktning – vad gäller?", a:"Var alltid vaksam på vilken riktning pipans mynning pekar. Vapnet ska peka i säker riktning även vid maximal rekyl och vid eventuell justering." },
+  { chapter:"Del B Säkerhet", q:"Grundregel 5: Vad gäller för skytledare och bakom målet?", a:"Kontrollera alltid vad som finns bakom målet. Kullfånget ska ta upp rikoschetter. Vid all skjutning ska skytledare finnas – saknas utsedd skytledare ska skyttarna SJÄLVA utse en." },
+  { chapter:"Del B Säkerhet", q:"Grundregel 6–8: Alkohol, barn och förvaring?", a:"6. Hantera ALDRIG vapen/ammunition vid påverkan av alkohol eller droger.\n7. Vapen och ammunition ska vara inlåsta och oåtkomliga för minderåriga och obehöriga när du inte är närvarande.\n8. Varje vapen som inte är under din direkta uppsikt ska förvaras på ett säkert och lagenligt sätt." },
+  { chapter:"Del B Säkerhet", q:"När är ett vapen definierat som laddat?", a:"• En skarp patron finns i patronläge eller trumma\n• En pistol har ett påfyllt magasin I vapnet\n• En revolver har en påfylld trumma" },
+  { chapter:"Del B Säkerhet", q:"Får man föra in ett påfyllt magasin i vapnet innan laddningskommando?", a:"NEJ. Påfyllt magasin eller enstaka patron får INTE införas i vapnet (inklusive trumma) förrän laddning anbefalles." },
+  { chapter:"Del B Säkerhet", q:"Får laddning ske när som helst på banan?", a:"NEJ. Laddning får inte äga rum förrän skytten befinner sig på platsen varifrån skjutning ska äga rum. Vid tävling och organiserad träning: laddning INTE utan kommando." },
+  { chapter:"Del B Säkerhet", q:"Vad gäller för vapnet när du ska lämna skjutplatsen?", a:"Vapnet får INTE hölstras/nedpackas eller bortföras förrän: patron ur genomförts, vapnet visiterats, och vapnet är försett med propp/bricka." },
+  { chapter:"Del B Säkerhet", q:"Får skytten hantera sitt vapen (lyfta, justera) på banan utan tillstånd?", a:"NEJ. På bana får skytt INTE hantera sitt vapen förrän skytledaren givit sin tillåtelse eller kommenderat 'LADDA'. Fingret hålls ALLTID utanför varbygeln vid laddning." },
+  { chapter:"Del B Säkerhet", q:"Vad gäller om vapnet börjar fungera helautomatiskt (sprutning)?", a:"Skjutningen ska omedelbart avbrytas. Vapnet får inte ändras från sin modellenlighet – konstruktionsdetaljer som påverkar hållfasthet, säkerhet eller avsedd funktion." },
+  { chapter:"Del B Säkerhet", q:"Vad gäller för ammunition – får man använda vilken som helst?", a:"NEJ. Använd ALDRIG annan ammunition än den vapnet är avsedd för. Använd inte skadad ammunition, ammunition med osäkert ursprung, eller handladdad ammunition om osäkerhet råder om dess egenskaper." },
+  { chapter:"Del B Säkerhet", q:"Vad ska kontrolleras på vapnet FÖRE skjutning?", a:"Att loppet är urdraget och fritt från främmande föremål." },
+  { chapter:"Del B Säkerhet", q:"Vad gäller för hörselskydd och ögonskydd?", a:"Hörselskydd: ska användas vid allt skytte och i närheten av skjutplatsen.\nÖgonskydd (skyddande glasögon): bör användas vid allt skytte." },
+  { chapter:"Del B Säkerhet", q:"Vad ska du göra om du upptäcker en fara på banan?", a:"Snarast rapportera till funktionär. Är faran överhängande: ropa 'Avbryt' och avbryt pågående skjutning omedelbart. Patron ur sker sedan efter kommando av skytledare." },
+  { chapter:"Del B Säkerhet", q:"Hur ska vapnet bäras på banan?", a:"Alltid i hölster eller väska – UTOM:\n• När skytten befinner sig på skjutplatsen\n• Vid vapenkontroll, sotning, justering och byte av växelsats\nNär vapnet tas upp: mynningen ska peka i säker riktning." },
+  { chapter:"Del B Säkerhet", q:"Hur utförs laddning korrekt?", a:"Laddning utförs med vapnet FRAMFÖR KROPPEN och i SKJUTRIKTNINGEN. Fingret hålls hela tiden UTANFÖR varbygeln." },
+  { chapter:"Del B Säkerhet", q:"Hur utförs patron ur korrekt?", a:"Patron ur utförs med vapnet FRAMFÖR KROPPEN och i SKJUTRIKTNINGEN." },
+  { chapter:"Del B Säkerhet", q:"Hur utförs visitation korrekt? Vad ska kontrolleras?", a:"Håll upp vapen och magasin så den visiterande kan kontrollera att patronläge, låda, trumma och magasin är TOMMA.\nFinn skjutbänk: vapnet läggs där, patronläget tydliggörs med propp/bricka.\nOBS revolver: trumman kontrolleras INNAN propp/bricka sätts i.\nDen visiterande signalerar med klapp på axeln att visitationen är klar." },
+  { chapter:"Del B Säkerhet", q:"Vilka tre påföljder finns vid regelbrott?", a:"1. Varning – mindre allvarliga brott (t.ex. vårdslös vapenhantering)\n2. Diskvalificering – allvarligare brott (t.ex. alkohol, ohörsamhet mot funktionär, allvarligt säkerhetsbrott). OBS: laddat vapen efter patron ur/visitation och före Ladda = omedelbar DQ.\n3. Avstängning – upp till HÖGST ett år. Pistolskyttekortet överlämnas till styrelsen." },
+  { chapter:"Del B Säkerhet", q:"Vad leder omedelbart till diskvalificering utan undantag?", a:"Skytt som under tävling, efter 'Patron ur' och visitation och före 'Ladda', påträffas med ett laddat vapen – diskvalificeras med OMEDELBAR VERKAN." },
+  { chapter:"Del B Säkerhet", q:"Vad är en skjutbana och vad krävs för att använda den?", a:"En anläggning särskilt anordnad för skjutning med eldvapen. Får användas ENDAST:\n• Efter tillstånd från polismyndigheten\n• Med giltigt godkännande från polismyndigheten\nBestämmelser om byggnation finns i FAP 525-1." },
+  { chapter:"Del B Säkerhet", q:"Hur och när lämnas en protest på tävling?", a:"Skytt som inte är nöjd med skytledarens beslut har rätt att lämna in protest till tävlingsledningen så snart som möjligt.\nFältskjutning: senast 10 min efter målgång.\nSkid-/springskytte: inom 10 min efter målgång.\nProtesten antecknas på skjutkortet." },
+  { chapter:"Del B Säkerhet", q:"Vem ansvarar för säkerheten vid föreningens skjutövningar?", a:"Föreningsstyrelsen är ansvarig. De utser funktionärer och ansvarar för att de är väl förtrogna med sina uppgifter ur säkerhetssynpunkt. Vid större tävlingar kan ansvaret delegeras till en organisationskommitté eller tävlingsledning." },
+
+  // KAP 1 – TILLÄGG
+  { chapter:"Kap 1", q:"Hur många träffar krävs i tillämpningsserien för bronsmärket?", a:"Minst 5 träff per serie i 3 tillämpningsserier på 25 m mot cirkelmål C 30 (eller B 100 figur på 50 m). Utgångsställning 45 grader, stödhand tillåten, 60 sekunders skjuttid." },
+  { chapter:"Kap 1", q:"Vad gäller för precisionsdelen av bronsmärket?", a:"3 precisionsserier à 5 skott på 25 m, max 5 minuters skjuttid. Minst 34 poäng per serie. (Rabatt för äldre skyttar – se Skjuthandboken.)" },
+
+  // KAP 2 – TILLÄGG
+  { chapter:"Kap 2", q:"Vad innebär 'Hänsyn' i skyttevett?", a:"Skytte är en koncentrationssport – oväntat ljud och rörelser kan störa koncentrationen. Uppträd hänsynsfullt på och utanför skjutbanan. Reaktioner vid tur/otur (skrika, kasta grejer) hör inte hemma på banan – det hjälper inte resultatet." },
+  { chapter:"Kap 2", q:"Vad är 'Säkerhet' i skyttevett?", a:"Eftersom vi har pistoler och revolvrar som idrottsredskap måste alltid säkerheten komma i första rummet. Det finns ingen ursäkt att bryta mot gällande säkerhetsbestämmelser. Behandla alltid vapnet som om det vore laddat." },
+  { chapter:"Kap 2", q:"Vad är en verksamhetsplan i en skytteförening?", a:"Beskriver vilka aktiviteter och arrangemang föreningen genomför närmaste året: träning, tävling, egna arrangemang, läger och kursdeltagande. Planens omfattning beror på medlemmarnas intresse och behov." },
+  { chapter:"Kap 2", q:"Hur utträder man ur en förening?", a:"Skriftlig anmälan till styrelsen – man anses därmed omedelbart ha lämnat föreningen." },
+
+  // KAP 3 – ALLA VAPENGRUPPER
+  { chapter:"Kap 3", q:"Vapengrupp LUFTPISTOL – typ, kaliber och avtryck?", a:"Typ: Två typer – spännarm (luften förkomprimeras inför varje skott) eller CO2/komprimerad luft från behållare.\nKaliber: 4,5 mm (.177)\nAvtryck: minst 500 gram\nNot: CO2-typen kräver särskild varsamhet med tryckkärl." },
+  { chapter:"Kap 3", q:"Vapengrupp A – typ, kaliber och avtryck?", a:"Typ: Grovkalibriga pistoler av tjänstevapentyp. Ska skjutas med mandlad ammunition med MINST 420 joules mynningsenergi. Kolven får INTE ha tumhylla eller handstöd.\nKaliber: .30–.45\nAvtryck: minst 1,36 kg" },
+  { chapter:"Kap 3", q:"Vapengrupp B – typ, kaliber och avtryck?", a:"Typ: Grovkalibriga pistoler och revolvrar med anatomisk kolv – dvs. tumhylla OCH handstöd är tillåtet.\nKaliber: .30–.45\nAvtryck: minst 1,0 kg" },
+  { chapter:"Kap 3", q:"Vapengrupp C – typ, kaliber och avtryck? (Nybörjarens vapen!)", a:"Typ: Finkalibriga pistoler och revolvrar. ANVÄNDS VID ALLT NYBÖRJARSKYTTE MED KRUTVAPEN. Kolvbestämmelserna är samma som för grupp B.\nKaliber: ENDAST .22 long rifle\nAvtryck: minst 1,0 kg" },
+  { chapter:"Kap 3", q:"Vapengrupp R – typ, kaliber och avtryck?", a:"Typ: Grovkalibriga revolvrar – gäller ENDAST fältskjutning och militär snabbmatch. Kolven får vara anatomiskt utförd som i klass B och C.\nKaliber: .30–.45\nAvtryck: minst 1,36 kg" },
+  { chapter:"Kap 3", q:"Vapengrupp M – vad är det?", a:"Typ: Grovkalibriga pistoler och revolvrar för magnumtävlingar i enlighet med SHB E.4.\nAnvänds vid Magnumfältskjutning och Magnumprecision." },
+  { chapter:"Kap 3", q:"Vapengrupp PPC – vad är det?", a:"Typ: Grovkalibriga pistoler och revolvrar för PPC (Precision Pistol Competition) i enlighet med SHB N.3.1–9.\nPPC har ursprung från polisen i USA och skjuts på 5 avstånd: 3, 7, 15, 25 och 50 yards." },
+  { chapter:"Kap 3", q:"Fripistol (SvSF) – vad gäller?", a:"Varje 5,6 mm (.22 long) vapen med kantantändning som överensstämmer med SvSF-reglementet för fripistol får användas. De får ENDAST laddas med ett skott i taget.\nTävlingsavstånd: 50 meter." },
+  { chapter:"Kap 3", q:"Vad är skillnaden mellan vapengrupp A och B gällande kolven?", a:"Grupp A: kolven får INTE ha tumhylla eller handstöd (rak, ej anatomisk). Avtryck: min 1,36 kg.\nGrupp B: kolven FÅR ha anatomisk utformning med tumhylla OCH handstöd. Avtryck: min 1,0 kg.\nBåda: kaliber .30–.45." },
+  { chapter:"Kap 3", q:"Vad är SäkB och vem godkänner skjutbanor?", a:"SäkB = Säkerhetsbestämmelser för civilt skytte – finns hos varje skytteförening och är grunden för all säkerhet på och runt skjutbanor. Varje skjutbana besiktigas och godkänns av Polisen. Ansvaret för banan vilar på styrelsen." },
+  { chapter:"Kap 3", q:"Vad gäller för ammunition i vapengrupp A, B, R och M?", a:"All ammunition i dessa vapengrupper är CENTRALANTÄND. Kaliber .30–.45 (upp till kal. .455).\nGrupp A: mandlad ammunition med minst 420 joules mynningsenergi." },
+
+  // KAP 4 – TILLÄGG
+  { chapter:"Kap 4", q:"Vad är 'organisationskontrollerad uppsiktsutlåning'?", a:"Den vanligaste formen av utlåning. Äger rum när en skytteförening har träning eller tävling. Arrangören är ansvarig – räknas som uppsiktsutlåning även för transport till och från tävlingen. Ingen åldersgräns." },
+  { chapter:"Kap 4", q:"Vad gäller om en person förekommer i polisregistret – kan de få vapenlicens?", a:"En person som förekommer i polisregistret (t.ex. tidigare straffad) lär få svårigheter att få tillstånd att inneha vapen. Kravet är att vara en 'allmänt skötsam medborgare'." },
+
+  // KAP 5 – TILLÄGG
+  { chapter:"Kap 5", q:"Hur ska korrigering av skjutställning göras?", a:"Korrigering av skjutställning ska ske genom omställning av FÖTTERNA och därmed hela kroppen – INTE genom att ändra armens riktning. Fötterna vrids runt en tänkt axel i golvet." },
+  { chapter:"Kap 5", q:"Vilka fingrar håller egentligen vapnet vid greppet?", a:"Långfingret är det finger som väsentligen håller vapnet mot tumgreppet. Ringfinger och lillfinger hjälper till. Tummen hålls relativt löst mot kolvens vänstra sida. Pekfingret läggs med fingerblomman mitt på avtryckaren i 90 graders vinkel mot pipan." },
+  { chapter:"Kap 5", q:"Vad är grov- och finriktning?", a:"Grovriktning: man riktar in vapnet mot den egna tavlan i grova drag – stora justeringar för att komma i riktområdet.\nFinriktning: endast små justeringar av vapnet så att siktbilden blir så bra som möjligt. Max 8 sekunder. Sker automatiskt med träning." },
+
+  // KAP 6 – TILLÄGG
+  { chapter:"Kap 6", q:"Vad gäller vid vapenfel i en PRECISIONSTÄVLING?", a:"En klickad patron kan ersättas med en ny – men skytten är skyldig att efter seriens slut lämna den klickade patronen till skytledaren." },
+  { chapter:"Kap 6", q:"Vad gäller vid vapenfel i en FÄLTTÄVLING?", a:"Sänk vapnet med pipan i skjutriktningen, räck upp den fria armen och påkalla skytledarens uppmärksamhet – för att få vapenfelet bedömt. Du ska inte åtgärda något på eget initiativ." },
+
+  // KAP 7 – TILLÄGG
+  { chapter:"Kap 7", q:"Nationell helmatch – hur är den uppbyggd?", a:"Kombination av precision, snabb och fält i 4 serier vardera. Fältskyttemoment: en tavla med 4 figurer, femskottsserie mot varje figur. Tiderna är 18, 16, 14 och 12 sek. Utgångsställning 45 grader. Figurer ringade 6–10 poäng. Utanför ringning = 0 poäng." },
+  { chapter:"Kap 7", q:"Militär snabbmatch – hur fungerar det?", a:"Form av snabbskjutning i ALLA fyra vapengrupperna. Mål: internationella snabbskjutningstavlan. Avstånd: 25 m. 5 skott per serie, 4 serier per skjuttid. Skjuttiderna är 10, 8 och 6 sek. Utgångsläge 45 grader. Stödhand tillåten i grupp A och R." },
+  { chapter:"Kap 7", q:"Vad gäller för snabbpistoltavlan och fripistoltavlan (mått)?", a:"Snabbpistoltavla: 60×60 cm, 5 ringar, tia = 10 cm.\nPrecisionstav (fripistol/precision): 60×60 cm, 10 ringar, tia = 5 cm.\nLuftpistoltavla: 17×17 cm (hel 10-ringad) eller 14×14 cm (ringad från 3). Tia = 11,5 mm." },
+  { chapter:"Kap 7", q:"Vad är falling target och hur fungerar det?", a:"Skytte med luftpistol mot fallmål. I målstället finns 5 mål (riktprickar) med fem storlekar: 11 mm (innertia), 16 mm (tia), 32 mm (nia) och 48 mm (åtta). 40 tävlingsskott skjuts skott för skott under en tid av 40 sek per skott." },
+
+  // KAP 8 – TILLÄGG
+  { chapter:"Kap 8", q:"Vad är fadderverksamhet och vad är faddrens roll?", a:"Fadderverksamheten hjälper nya medlemmar att förkovra sig i skytte. En erfaren skytt (fadder) delar erfarenheter med en ny adept. Faddern ansvarar för vapnet via organisationskontrollerad uppsiktsutlåning – antingen eget eller klubbvapen." },
+  { chapter:"Kap 8", q:"Vilka levnadsvanor påverkar skytteresultaten negativt?", a:"• Alkohol: försämrar omdöme, reaktion och koordination – effekterna sitter kvar dagen efter\n• Koffein: påverkar förmågan att hålla vapnet stilla – undvik inför tävling\n• Rökning/snus: vanebildande, försämrar kondition. Nikotinets effekter mer uttalade vid snus\n• Dålig kost och otillräcklig sömn (behov: 7–8 tim/natt)" },
+
+];
+
+let deck = [...allCards];
+let currentIndex = 0;
+let results = {}; // cardIndex -> true/false
+let isFlipped = false;
+let activeFilter = 'all';
+
+function initResults() {
+  results = {};
+  allCards.forEach((_, i) => results[i] = null);
+}
+initResults();
+
+function getDeck() {
+  if (activeFilter === 'all') return allCards.map((c, i) => ({...c, origIdx: i}));
+  if (activeFilter === 'wrong') {
+    return allCards.map((c, i) => ({...c, origIdx: i})).filter(c => results[c.origIdx] === false);
+  }
+  return allCards.map((c, i) => ({...c, origIdx: i})).filter(c => c.chapter === activeFilter);
+}
+
+function renderCard() {
+  const d = getDeck();
+  if (d.length === 0) {
+    document.getElementById('counter').textContent = 'Inga kort i detta filter';
+    document.getElementById('cardFront').querySelector('.card-question').textContent = 'Inga kort att visa';
+    document.getElementById('cardChapter').textContent = '';
+    document.getElementById('cardAnswer').textContent = '';
+    document.getElementById('actionBtns').style.display = 'none';
+    updateStats();
+    return;
+  }
+  if (currentIndex >= d.length) currentIndex = d.length - 1;
+  const card = d[currentIndex];
+  document.getElementById('counter').textContent = `Kort ${currentIndex + 1} av ${d.length}`;
+  document.getElementById('cardChapter').textContent = card.chapter;
+  document.getElementById('cardChapterBack').textContent = card.chapter;
+  document.getElementById('cardQuestion').textContent = card.q;
+  document.getElementById('cardAnswer').textContent = card.a;
+  // Reset flip
+  isFlipped = false;
+  document.getElementById('card').classList.remove('flipped');
+  document.getElementById('actionBtns').style.display = 'none';
+  updateStats();
+}
+
+function flipCard() {
+  isFlipped = !isFlipped;
+  document.getElementById('card').classList.toggle('flipped', isFlipped);
+  document.getElementById('actionBtns').style.display = isFlipped ? 'flex' : 'none';
+}
+
+function markCard(correct) {
+  const d = getDeck();
+  const card = d[currentIndex];
+  results[card.origIdx] = correct;
+  nextCard();
+}
+
+function nextCard() {
+  const d = getDeck();
+  if (currentIndex < d.length - 1) {
+    currentIndex++;
+    renderCard();
+  } else {
+    showDone();
+  }
+}
+
+function prevCard() {
+  if (currentIndex > 0) {
+    currentIndex--;
+    renderCard();
+  }
+}
+
+function showDone() {
+  const d = getDeck();
+  const answered = d.filter(c => results[c.origIdx] !== null).length;
+  const correct = d.filter(c => results[c.origIdx] === true).length;
+  const pct = answered > 0 ? Math.round(correct / answered * 100) : 0;
+  document.getElementById('doneScore').textContent = `${pct}% rätt`;
+  let msg = '';
+  if (pct >= 80) msg = '🎉 Utmärkt! Du är redo för provet!';
+  else if (pct >= 60) msg = '👍 Bra jobbat! Repetera de du missat.';
+  else msg = '📚 Öva mer på de röda korten och försök igen!';
+  document.getElementById('doneMsg').textContent = `${correct} av ${answered} kort rätt. ${msg}`;
+  document.getElementById('cardArea').style.display = 'none';
+  document.getElementById('doneScreen').style.display = 'block';
+}
+
+function restart() {
+  currentIndex = 0;
+  initResults();
+  document.getElementById('cardArea').style.display = 'flex';
+  document.getElementById('doneScreen').style.display = 'none';
+  renderCard();
+}
+
+function filterCards(filter) {
+  activeFilter = filter;
+  currentIndex = 0;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('cardArea').style.display = 'flex';
+  document.getElementById('doneScreen').style.display = 'none';
+  renderCard();
+}
+
+function shuffleCards() {
+  // Reset to all and shuffle
+  activeFilter = 'all';
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.filter-btn').classList.add('active');
+  // Fisher-Yates on the allCards array
+  for (let i = allCards.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [allCards[i], allCards[j]] = [allCards[j], allCards[i]];
+  }
+  initResults();
+  currentIndex = 0;
+  document.getElementById('cardArea').style.display = 'flex';
+  document.getElementById('doneScreen').style.display = 'none';
+  renderCard();
+}
+
+function updateStats() {
+  const d = getDeck();
+  const origIdxs = d.map(c => c.origIdx);
+  const yes = origIdxs.filter(i => results[i] === true).length;
+  const no = origIdxs.filter(i => results[i] === false).length;
+  const left = origIdxs.filter(i => results[i] === null).length;
+  const total = d.length;
+  document.getElementById('countYes').textContent = `${yes} kan`;
+  document.getElementById('countNo').textContent = `${no} kan ej`;
+  document.getElementById('countLeft').textContent = `${left} kvar`;
+  const pct = total > 0 ? ((yes + no) / total * 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+// Init
+renderCard();
+</script>
+</body>
+</html>
